@@ -5,6 +5,7 @@
 #include "CoreMinimal.h"
 #include "GameFramework/Actor.h"
 #include "Animation/AnimInstance.h"
+#include "GEngine3Aleksei/Public/ToggleableDebugVisualization.h"
 #include "Dragon.generated.h"
 
 
@@ -26,7 +27,7 @@ public:
 class UCapsuleComponent;
 
 UCLASS()
-class GENGINE3ALEKSEI_API ADragon : public AActor
+class GENGINE3ALEKSEI_API ADragon : public AActor, public IToggleableDebugVisualization
 {
 	GENERATED_BODY()
 	
@@ -34,6 +35,9 @@ protected:
 
     UPROPERTY(EditAnywhere, BlueprintReadWrite)
     USkeletalMeshComponent* SkeletalMeshComponent;
+	
+    UPROPERTY(EditAnywhere, BlueprintReadWrite)
+    UAnimSequence* Anim;
 
 	UPROPERTY(EditAnywhere, BlueprintReadWrite)
 	UPhysicsControlComponent* PhysicsControl;
@@ -42,9 +46,13 @@ protected:
 	float MovementSpeed;
 
 	UPROPERTY(EditAnywhere)
-	TArray<USceneComponent*> AttachPoints;
+	TArray<UStaticMeshComponent*> AttachPoints;
+	
 	TArray<FVector> defaultAttachPositions; // Positions of legs in local coordinate system.
 	FVector defaultLegCenter;
+
+	bool bDebugOn = false;
+    virtual void ToggleDebugVisualization_Implementation() override;
 
 	
 	

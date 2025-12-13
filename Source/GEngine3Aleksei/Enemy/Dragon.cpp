@@ -11,8 +11,27 @@
 #include "PhysicsEngine/PhysicsConstraintComponent.h"
 #include "DrawDebugHelpers.h"
 
+void ADragon::ToggleDebugVisualization_Implementation()
+{
+	if (bDebugOn)
+	{
+		bDebugOn = false;
+	} else
+	{
+		bDebugOn = true;
+	}
+	
+	for (int i = 0; i < 4; i++)
+	{
+		AttachPoints[i]->SetVisibility(bDebugOn);
+	}
+}
+
+
 ADragon::ADragon()
 {
+
+	
 	PrimaryActorTick.bCanEverTick = true;
 
 	SkeletalMeshComponent = CreateDefaultSubobject<USkeletalMeshComponent>("DragonMesh");
@@ -22,14 +41,38 @@ ADragon::ADragon()
 	SkeletalMeshComponent->SetEnableGravity(false);
 	SkeletalMeshComponent->SetCollisionEnabled(ECollisionEnabled::QueryAndPhysics);
 
+	
+	USkeletalMesh* DragonMesh = LoadObject<USkeletalMesh>(
+		this,
+		TEXT("/Script/Engine.SkeletalMesh'/Game/Dragon/SM_Dragon.SM_Dragon'")
+	);
+
+	Anim = LoadObject<UAnimSequence>(
+		this,
+		TEXT("/Script/Engine.AnimSequence'/Game/Dragon/AS_Dragon.AS_Dragon'")
+	);
+
+	FTransform DragonTransform;
+
+	SkeletalMeshComponent->SetSkeletalMesh(DragonMesh);
+	SkeletalMeshComponent->SetAnimationMode(EAnimationMode::AnimationSingleNode);
+	SkeletalMeshComponent->SetAnimation(Anim);
+
+	
+
 	PhysicsControl = CreateDefaultSubobject<UPhysicsControlComponent>("PhysicsControl");
 
+	UStaticMesh* debugMesh = LoadObject<UStaticMesh>(this, TEXT("/Script/Engine.StaticMesh'/Game/LevelPrototyping/Meshes/SM_ChamferCube.SM_ChamferCube'"));
 	// Create 4 attach points for legs
 	for (int i = 0; i < 4; i++)
 	{
-		USceneComponent* NewAttachPoint = CreateDefaultSubobject<USceneComponent>(
+		UStaticMeshComponent* NewAttachPoint = CreateDefaultSubobject<UStaticMeshComponent>(
 			*FString::Printf(TEXT("AttachPoint%d"), i));
 		NewAttachPoint->SetupAttachment(RootComponent);
+		NewAttachPoint->SetCollisionEnabled(ECollisionEnabled::NoCollision);
+		NewAttachPoint->SetStaticMesh(debugMesh);
+		NewAttachPoint->SetRelativeScale3D({0.1, 0.1, 0.1});
+		NewAttachPoint->SetVisibility(false);
 		AttachPoints.Add(NewAttachPoint);
 	}
 }
@@ -84,6 +127,7 @@ void ADragon::BeginPlay()
 {
 	Super::BeginPlay();
 
+	
 	targetRotation = SkeletalMeshComponent->GetComponentQuat();
 	SkeletalMeshComponent->OnComponentHit.AddDynamic(this, &ADragon::OnHit);
 
@@ -249,6 +293,8 @@ void ADragon::reattach()
 		return;
 	}
 
+	
+
 	FVector PC = firstHitPositions[idxC];
 	FVector Normal = FVector::CrossProduct(AB, PC - PA);
 	if (Normal.IsNearlyZero())
@@ -292,6 +338,8 @@ void ADragon::reattach()
 		bIsAttached = false;
 		return;
 	}
+
+
 
 	// Apply rotation to skeletal mesh immediately to align mesh up to plane normal
 	FQuat DeltaQuat = FQuat::FindBetweenNormals(MeshLocalUpWorld, Normal);
@@ -337,16 +385,30 @@ void ADragon::reattach()
 		legHits[i] = LegHit;
 	}
 
+	
+
 	// Attach legs (use same rules as original)
 	for (int i = 0; i < legNames.Num(); ++i)
 	{
 		FHitResult& LegHit = legHits[i];
 		USceneComponent* AttachComp = AttachPoints[i];
-		if (!AttachComp || !LegHit.Component.IsValid())
+
+		if (!AttachComp)
 		{
+	GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, "wtf 1");
+			
 			bIsAttached = false;
 			return;
 		}
+
+		if (!LegHit.Component.IsValid())
+		{
+			
+			GEngine->AddOnScreenDebugMessage(-1, 3.0f, FColor::Red, "wtf 2");
+			bIsAttached = false;
+			return;
+		}
+		
 		AttachComp->AttachToComponent(
 			LegHit.Component.Get(),
 			FAttachmentTransformRules(EAttachmentRule::KeepWorld, EAttachmentRule::KeepWorld,
@@ -354,6 +416,8 @@ void ADragon::reattach()
 			LegHit.BoneName);
 		AttachComp->SetWorldLocation(LegHit.ImpactPoint);
 	}
+	
+	
 
 
 	currentVelocity = FVector::ZeroVector;
